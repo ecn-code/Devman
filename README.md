@@ -38,3 +38,5 @@ Afterwards, run the `Developer: Restart extension host` command. I mapped this t
 # Releasing
 
 Run the `release` script in `/extension` to bump package.json, create a git tag and push changes to the remote origin. There's a Github workflow that, on tag, builds the extension and publishes to the Visual Studio Marketplace. You'll need to set the repo secret `VS_MARKETPLACE_TOKEN` to your PAT.
+
+# 
