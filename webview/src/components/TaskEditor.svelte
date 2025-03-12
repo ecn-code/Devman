@@ -44,11 +44,11 @@
 
 <style>
     .panel {
-        width: 80%; /* Tamaño final del panel */
         height: 100%;
         position: fixed;
-        right: 0;
-        top: 0;
+        right: 10px;
+        left: 10px;
+        top: 10px;
         background-color: var(--vscode-editor-background);
         padding: 1rem;
         box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);

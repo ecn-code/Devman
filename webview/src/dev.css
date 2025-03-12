@@ -3,6 +3,10 @@
 * {
   --vscode-foreground: #E9ECEF;
   --vscode-panel-background: #05080C;
+  --vscode-input-background: #313131;
+  --vscode-input-border: #3c3c3c;
+  --vscode-focusBorder: #0078d4;
+  --vscode-editor-background: #313131;
 }
 
 html {

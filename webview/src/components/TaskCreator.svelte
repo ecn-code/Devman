@@ -22,5 +22,14 @@
     placeholder="Enter task title"
     class="border p-2 rounded w-full"
     on:keypress={handleKeyPress}
-    style="background-color: var(--vscode-editor-background); color: var(--vscode-editor-foreground);"
+    style="background-color: var(--vscode-input-background); color: var(--vscode-editor-foreground); border: 1px solid var(--vscode-input-border, transparent);"
 />
+
+<style>
+    input:focus {
+        outline: none;
+    }
+    input:focus-visible {
+        outline: 1px solid var(--vscode-focusBorder);
+    }
+</style>

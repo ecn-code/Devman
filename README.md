@@ -10,7 +10,7 @@ This is a boilerplate for building a Visual Studio Code extension. This extensio
 
 # Development
 
-1. In `/webview`: `npm run dev`. This is a Svelte project that outputs to `/extension/dist`.
+1. Run `npm run dev --prefix webview`. This is a Svelte project that outputs to `/extension/dist`.
 2. In `/extension`: `npm run build:watch`
 3. Run the extension using the debug panel.
 
