@@ -5,6 +5,7 @@
 
     window.addEventListener("edittask", (event) => {
         selectedTask = event.detail;
+        console.debug("Selected task: ", selectedTask);
     });
 
     function updateTask() {

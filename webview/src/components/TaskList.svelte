@@ -24,6 +24,8 @@
         window.addEventListener("updatetask", (event) => {
             tasks = tasks.map((task) => {
                 if (task.id === event.detail.id) {
+                    const event = new CustomEvent("start-ai", { detail: { ...task } });
+                    window.dispatchEvent(event);
                     return event.detail;
                 }
                 return task;
