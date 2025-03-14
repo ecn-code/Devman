@@ -21,6 +21,14 @@
                 taskListPosition = "0";
             }
         });
+        window.addEventListener("updatetask", (event) => {
+            tasks = tasks.map((task) => {
+                if (task.id === event.detail.id) {
+                    return event.detail;
+                }
+                return task;
+            });
+        });
     });
 
     function selectTask(task) {

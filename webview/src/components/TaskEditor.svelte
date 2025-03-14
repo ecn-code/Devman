@@ -1,7 +1,6 @@
 <script>
     import { fly } from "svelte/transition";
 
-    let task = { title: "", detail: "" };
     let selectedTask = null;
 
     window.addEventListener("edittask", (event) => {
@@ -9,7 +8,7 @@
     });
 
     function updateTask() {
-        const event = new CustomEvent("updatetask", { detail: { ...task } });
+        const event = new CustomEvent("updatetask", { detail: { ...selectedTask } });
         window.dispatchEvent(event);
     }
 
@@ -27,18 +26,11 @@
         <input
             type="text"
             bind:value={selectedTask.title}
+            on:change={updateTask}
             placeholder="Enter task title"
             class="border p-2 rounded w-full mb-4"
             style="background-color: var(--vscode-editor-background); color: var(--vscode-editor-foreground);"
         />
-
-        <button
-            on:click={updateTask}
-            class="p-2 bg-blue-500 text-white rounded w-full"
-            aria-label="Update Task"
-        >
-            Update Task
-        </button>
     </div>
 {/if}
 
