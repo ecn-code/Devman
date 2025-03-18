@@ -1,7 +1,7 @@
 const API_PATH = "http://localhost:11434";
-const MODEL = "llama3:8b";
+const MODEL = "llama3.1:8b";
 
-async function handleOllama(prompt) {
+async function generate(prompt) {
     console.debug("Handling Ollama event", prompt);
     const response = await fetch(`${API_PATH}/api/generate`, {
         method: 'POST',
@@ -9,60 +9,70 @@ async function handleOllama(prompt) {
         body: JSON.stringify({
             model: MODEL,
             prompt,
-            stream: false
+            stream: false,
+        }),
+    });
+    console.debug("Response from generate", response);
+
+    return await response.json();
+}
+
+async function chat(prompt) {
+    console.debug("Handling Ollama event", prompt);
+    const response = await fetch(`${API_PATH}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            model: MODEL,
+            messages: [
+                {
+                    role: 'user',
+                    content: prompt
+                }
+            ],
+            stream: false,
+            tools: [findClasses]
         }),
     });
 
     const result = await response.json();
     console.debug(result);
 
-    const functionCall = callFunction(result.response);
-    console.debug(functionCall);
-    if (functionCall) {
-        return await callUtility(functionCall.functionName, functionCall.param1, functionCall.param2);
+    if(result?.message?.tool_calls.length > 0) {
+        const toolCall = result.message.tool_calls[0];
+        const functionName = toolCall.function.name;
+        const parameters = toolCall.function.arguments;
+        
+        console.log('Calling utility: ', functionName, parameters);
+        return await callUtility(functionName, 1, parameters);
     }
 
     return result.response;
 };
 
+const findClasses = {
+    type: 'function',
+    function: {
+        name: 'findClasses',
+        description: 'Find classes from a feature',
+        parameters: {
+            type: 'objects',
+            required: ['sentence'],
+            properties: {
+                sentence: {
+                    type: 'string',
+                    description: 'The sentence to find classes from'
+                }
+            }
+        }
+    }
+};
+
 export async function processFeature(feature, context) {
         const prompt = `
-            The objective is to implement a feature.
-            To achieve it, we need to find which functions and how will be affected.
-            But before to have the functions we need to find the classes that will be affected.
-            And to find the classes we need to know the entities that will be affected.
-
-            1. Find the classes from the sentence.
-            2. Find the classes that will be affected.
-            3. Find the functions that will be affected.
-
-            To achieve it you can call some utilities. Every time you call an utility the result will be appended to the prompt.
-            Functions has always two parameters, the first is the step where you are, it is used to know later where you are.
-            The second is the parameters itself, is an array with every parameter that you need to pass to the utility.
-
-            If in any moment you have a doubt, you are not progressing or you can not continue, call the function requestHumanAction().
-            If you have you times the same Step call requestHumanAction().
-            If you end call end or requestHumanAction
-
-            Example: utility1(1, ["parameter1"])
-
-            When call an utility only response with something like the example.
-
-            Available utilities:
-            - extractClasses(step, feature)
-            - findFunctionsByNames(step, entity)
-            - findClassesByNames(step, entity)
-            - requestHumanAction()
-            - end()
-
-            Feature: ${feature}
-
-            Current state:
-            ${context}
-
-            Please, response only with the name of the function you want to call, and not forget the parentesis.
+            Get the classes feature: "${feature}"
         `;
-        return await handleOllama(prompt);
+        return await chat(prompt);
 };
 
 function callFunction(funcString) {
@@ -113,8 +123,8 @@ function callFunction(funcString) {
 async function callUtility(functionName, step, params) {
     let prompt = '';
     switch (functionName) {
-        case 'extractClasses':
-            prompt = extractClasses(params);
+        case 'findClasses':
+            prompt = extractClasses(params.sentence);
             break;
         case 'end':
         case 'requestHumanAction':
@@ -127,12 +137,16 @@ async function callUtility(functionName, step, params) {
             
     };
 
+    const result = await generate(prompt);
+
+    console.log(result.response);
+
     return `
     
     Step: ${step} 
     ---------------
 
-    ${await handleOllama(prompt)}
+    ${result.response}
     
     ---------------`;
 }
@@ -145,14 +159,13 @@ function extractClasses(sentence) {
         order -> pedido,
         cart -> carrito,
     `;
-    return `   ${entitiesTable}
+    return `   
+    
+        Tabla de traducción: ${entitiesTable}
 
-        Se te dará una frase. Utilizando solo las palabras que coinciden con las de la tabla de traducciones, crea una lista de objetos con la clave "nombre" y el valor correspondiente a la parte derecha de la tabla. Ignora todas las demás palabras. 
+        Feature: "${sentence}".
 
-        Frase: "${sentence}"
-
-        Por favor, asegúrate de solo devolver los objetos para las palabras que están en la tabla de traducciones. Solo devuelve el valor de la parte derecha de la tabla de traducciones. 
-        Devuelve la lista con formato \`\`\` <RESPONSE>\`\`\`.
+        Tomando la tabla traduce la feature a clases, solo clases que aparezcan en la feature.
     `;
 };
 

@@ -18,6 +18,8 @@
     });
 
     function addTask() {
+        console.debug('addTask');
+
         if (task.title.trim()) {
             task.id = Date.now().toString();
             const event = new CustomEvent("addtask", { detail: { ...task } });

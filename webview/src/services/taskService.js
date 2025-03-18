@@ -7,13 +7,11 @@ export function handleTaskEvents() {
     });
 
     window.addEventListener("start-ai", async (event) => {
-        console.debug("Start AI:", event.detail);
+        console.debug("1-Start AI:", event.detail);
         const task = event.detail;
-        const response = await processFeature(task.feature, task.description);
+        const response = await processFeature(task.title, task.description);
         task.description += response;
 
-        window.dispatchEvent(
-            new CustomEvent("updatetask", { detail: { ...task } })
-        );
+        console.debug("2-Start AI:", task);
     });
 }
