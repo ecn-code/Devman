@@ -17,37 +17,35 @@ async function generate(prompt) {
     return await response.json();
 }
 
-async function chat(prompt) {
-    console.debug("Handling Ollama event", prompt);
+async function chat(step, messages) {
+    console.debug("Handling Ollama event", messages);
     const response = await fetch(`${API_PATH}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             model: MODEL,
-            messages: [
-                {
-                    role: 'user',
-                    content: prompt
-                }
-            ],
+            messages,
             stream: false,
-            tools: [findClasses]
+            tools: [findClasses, findFiles, humanAction]
         }),
     });
 
-    const result = await response.json();
+    let result = await response.json();
     console.debug(result);
 
-    if(result?.message?.tool_calls.length > 0) {
+    if(result?.message?.tool_calls?.length > 0) {
         const toolCall = result.message.tool_calls[0];
         const functionName = toolCall.function.name;
         const parameters = toolCall.function.arguments;
         
         console.log('Calling utility: ', functionName, parameters);
-        return await callUtility(functionName, 1, parameters);
+        result = await callUtility(functionName, step, parameters);
+        console.log('chat utility', result);
+
+        return {role: 'tool', content: result};
     }
 
-    return result.response;
+    return {role: 'assistant', content: result.response};
 };
 
 const findClasses = {
@@ -56,7 +54,7 @@ const findClasses = {
         name: 'findClasses',
         description: 'Find classes from a feature',
         parameters: {
-            type: 'objects',
+            type: 'object',
             required: ['sentence'],
             properties: {
                 sentence: {
@@ -68,56 +66,64 @@ const findClasses = {
     }
 };
 
-export async function processFeature(feature, context) {
-        const prompt = `
-            Get the classes feature: "${feature}"
-        `;
-        return await chat(prompt);
-};
-
-function callFunction(funcString) {
-    const regex = /^([a-zA-Z0-9_]+)\((.*)\)$/;
-    const match = funcString.match(regex);
-
-    if (match) {
-        const functionName = match[1];
-        const paramsString = match[2];
-        const paramArray = [];
-        let openBrackets = 0;
-        let currentParam = '';
-
-        for (let i = 0; i < paramsString.length; i++) {
-            const char = paramsString[i];
-
-            if (char === '[') openBrackets++;
-            if (char === ']') openBrackets--;
-            if (char === ',' && openBrackets === 0) {
-                paramArray.push(currentParam.trim());
-                currentParam = '';
-            } else {
-                currentParam += char;
+const findFiles = {
+    type: 'function',
+    function: {
+        name: 'findFiles',
+        description: 'Find files from one or more class names',
+        parameters: {
+            type: 'object',
+            required: ['classnames'],
+            properties: {
+                classnames: {
+                    type: 'string',
+                    description: 'List of class names to find files from'
+                }
             }
         }
-
-        if (currentParam.trim()) {
-            paramArray.push(currentParam.trim());
-        }
-
-        const param1 = paramArray[0] ? paramArray[0] : null;
-        const param2 = paramArray[1] ? paramArray[1] : null;
-
-        console.debug(`Function name: ${functionName}`);
-        console.debug(`Param 1: ${param1}`);
-        console.debug(`Param 2: ${param2}`);
-
-        return {
-            functionName,
-            param1,
-            param2
-        };
     }
+};
 
-    return null;    
+const humanAction = {
+    type: 'function',
+    function: {
+        name: 'humanAction',
+        description: 'When the task is finish or need human action',
+        parameters: {
+            type: 'object',
+            required: ['response'],
+            properties: {
+                response: {
+                    type: 'string',
+                    description: 'Some context to continue the task'
+                }
+            }
+        }
+    }
+};
+
+export async function processFeature(step, prompt) {
+    const messages = [
+        {
+            "role": "system",
+            "content": "Tu tarea es completar los 3 pasos de manera automática, sin necesidad de intervención del usuario. Si un paso ya ha sido realizado, usa sus resultados para llamar a la siguiente herramienta hasta completar los 3 pasos. No respondas hasta que todos los pasos estén completados."
+        },
+        {
+            role: 'user',
+            content: prompt
+        }
+    ];
+    while(step < 3) {
+        messages.push(await chat(step, messages));
+        if(messages[messages.length - 1].role === 'tool') {
+            messages.push({
+                "role": "system",
+                "content": "Tu tarea es completar los 3 pasos de manera automática, sin necesidad de intervención del usuario. Si un paso ya ha sido realizado, usa sus resultados para llamar a la siguiente herramienta hasta completar los 3 pasos. No respondas hasta que todos los pasos estén completados."
+            });
+        }
+        step++;
+    }
+    return messages;
 };
 
 async function callUtility(functionName, step, params) {
@@ -126,6 +132,8 @@ async function callUtility(functionName, step, params) {
         case 'findClasses':
             prompt = extractClasses(params.sentence);
             break;
+        case 'findFiles':
+            console.log(functionName, step, params);
         case 'end':
         case 'requestHumanAction':
             return 'END';
@@ -142,13 +150,8 @@ async function callUtility(functionName, step, params) {
     console.log(result.response);
 
     return `
-    
-    Step: ${step} 
-    ---------------
-
     ${result.response}
-    
-    ---------------`;
+    `;
 }
 
 function extractClasses(sentence) {
@@ -166,21 +169,6 @@ function extractClasses(sentence) {
         Feature: "${sentence}".
 
         Tomando la tabla traduce la feature a clases, solo clases que aparezcan en la feature.
+        Responde diciendo: Paso 1 - ClassNames = [<Clases separadas por coma>]
     `;
 };
-
-function extractJson(text) {
-    const regex = /\[.*?\]/s;
-    const match = text.match(regex);
-
-    if (match) {
-        try {
-            return JSON.parse(match[0]);
-        } catch (error) {
-            console.error('Error al parsear el JSON:', error);
-        }
-    } else {
-        console.log('No se encontró un JSON válido en la respuesta.');
-        return null;
-    }
-}
