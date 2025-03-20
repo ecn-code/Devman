@@ -24,6 +24,7 @@
         window.addEventListener("updatetask", (event) => {
             tasks = tasks.map((task) => {
                 if (task.id === event.detail.id) {
+                    console.log(event.detail);
                     return event.detail;
                 }
                 return task;

@@ -32,6 +32,14 @@
             class="border p-2 rounded w-full mb-4"
             style="background-color: var(--vscode-editor-background); color: var(--vscode-editor-foreground);"
         />
+
+        <textarea
+            bind:value={selectedTask.description}
+            on:change={updateTask}
+            placeholder="Enter task description"
+            class="border p-2 rounded w-full mb-4"
+            style="background-color: var(--vscode-editor-background); color: var(--vscode-editor-foreground);"
+        ></textarea>
     </div>
 {/if}
 
