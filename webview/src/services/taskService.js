@@ -1,4 +1,3 @@
-import { runAgent } from "./ollamaService";
 import { newContext } from "@/core/context";
 import { newInitialState } from "@/core/initial-state";
 import { forward } from "@/core/tool-state";
